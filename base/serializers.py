@@ -17,6 +17,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
+        user.save()
         return user
     
     def update(self, instance, validated_data):
@@ -27,9 +28,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
-
-        
-
 
 class UserLoginSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

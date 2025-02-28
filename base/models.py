@@ -11,6 +11,7 @@ class CustomUserModel(AbstractUser):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     avatar = models.ImageField(upload_to='video',null=True, default='https://res.cloudinary.com/dmsj2cz1b/image/upload/v1/video/images_c8im89')
+    is_active = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

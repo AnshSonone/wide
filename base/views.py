@@ -1,22 +1,28 @@
 from rest_framework.response import Response
 from rest_framework.decorators import APIView
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny 
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate, login, logout
-from . import  serializers
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny 
-from .models import VideoModel, AnswerModel
-from .renderers import UserRenderers
-from django.db.models import Q
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from . import  serializers
+from .models import VideoModel, AnswerModel
+from .renderers import UserRenderers
+from .utils import encode_url, decode_url, get_token
+from .emails import send_activation_email, send_forgot_password_email, send_notify_email
 
 # Create your views here.
 
 User = get_user_model()
+
+# =====================
+#   JWT TOKEN VIEWS
+#=======================
 
 class ObtainTokenPairWithColorView(TokenObtainPairView):
     serializer_class = serializers.MyTokenObtainPairSerializer
@@ -31,19 +37,25 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+# =====================
+#   AUTHENTICATION VIEWS
+#=======================
+
 class RegisterApiView( APIView ):
 
     renderer_classes = [UserRenderers]
     permission_classes = [AllowAny]
 
     def post(self, request):
+        
         serializer = serializers.UserRegisterSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
+        if serializer.is_valid():
+            user = serializer.create(serializer.validated_data)
+            activation_url = encode_url(user, route='activate')
+            send_activation_email(user.email, activation_url)
             return Response({'message': 'User register successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
 class LoginApiView(
     APIView
 ):
@@ -53,20 +65,20 @@ class LoginApiView(
 
     def post(self, request):
         serializer = serializers.UserLoginSerializer(data=request.data)
-        serializer.is_valid()
-        email = serializer.data.get('email')
-        password = serializer.data.get('password')
-        user = authenticate(email=email, password=password)
-        if user is not None:
-            login(request, user)
-            token = get_tokens_for_user(user)
-            return Response({
-                'token': token,
-                'message': 'Login Successfully'
-                }, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            password = serializer.data.get('password')
+            user = authenticate(email=email, password=password)
+            if user is not None:
+                login(request, user)
+                token = get_tokens_for_user(user)
+                send_notify_email(email)
+                return Response({
+                    'token': token,
+                    'message': 'Login Successfully'
+                    }, status=status.HTTP_200_OK)
         else:
-            return Response({'error': {'non_filed_errors' : 'Email or Passwrod are invalid'}}, )
-
+            return Response({'error': {'non_filed_errors' : 'Email or Passwrod are invalid'}}, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutApiView( APIView ):
 
@@ -74,45 +86,112 @@ class LogoutApiView( APIView ):
         logout(request)
         return Response({'message': 'User logout successfully'}, status=status.HTTP_200_OK)
 
+class ActivationView( APIView ):
+    permission_classes = [ AllowAny ]
+
+class Activation_ConfrimView( APIView ):
+    
+    permission_classes = [ AllowAny ]
+    
+    def patch(self, request):
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+
+        if not uid and not token:
+            return Response({'messgae': 'Uid or token is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = decode_url(uid)
+        user = get_object_or_404(User, id=user_id)
+        
+        if get_token(user, token):
+            if user.is_active == True:
+                return Response({'message': 'User Account already activated'}, status=status.HTTP_200_OK)
+
+            user.is_active = True
+            user.save()
+            return Response({'message': 'User account activated successfully'}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({'message': 'User or token is not exist'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ForgotView( APIView ):
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response({'message': 'Email is requied'}, status=status.HTTP_400_BAD_REQUEST) 
+
+        user = get_object_or_404(User, email=email)
+
+        if user is None:
+            return Response({'message': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        forgot_url = encode_url(user, 'forgot')
+        send_forgot_password_email(email, forgot_url)
+        return Response({'message': 'forgot password email send succesfully'}, status=status.HTTP_200_OK)
+
+class Forgot_passwordView( APIView ):
+    
+    permission_classes = [AllowAny]
+    
+    def patch(self, request):
+        uid = request.data.get('uid')
+        token  = request.data.get('token')
+        password = request.data.get('password')
+
+        if not uid and not token:
+            return Response({'message': 'Uid or token is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user_id = decode_url(uid)
+        user =  get_object_or_404(User, id=user_id)
+
+        if user is None:
+            return Response({'message': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        
+        
+        if get_token(user, token):
+            user.set_password(password)
+            user.save()
+            return Response({'message': 'User password update successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'token expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+# =====================
+#   FUNCTIONANLLITY VIEWS
+#=======================
 
 class ProfileApiView( APIView ):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
-    def get(self, request):
+    def get(self, request):    
         user = request.user
         serializer = serializers.UserRegisterSerializer(user, many=False)
-        # user_id = serializer.data['id']
-        # print("before encode", user_id)
-        # Convert the user ID to bytes before Base64 encoding
-        # user_id_bytes = force_bytes(user_id)
-        # Encode the user ID in URL-safe Base64 format
-        # user_id_base64_encode = urlsafe_base64_encode(user_id_bytes)
-        # print("after encode", user_id_base64_encode)
-        # data = serializer.data
-        # if 'id' in data:
-            #  data['id'] = user_id_base64_encode
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class RetriveProfileById(APIView):
+    
+    def get(self, request, id):
+        user = User.objects.get(id=id)
+        print(user.id)
+        if user is None:
+            return Response({'message': user.id}, status=status.HTTP_404_NOT_FOUND)
+        serializer = serializers.UserProfileSerializer(user, many=False)
+        return Response(serializer.data, status=status.HTTP_200_OK)     
 
 class RetriveVideoByProfileView( APIView ):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        videoUser = request.user
-        # Decode the Base64-encoded ID back to the original ID
-        decode_user_id_bytes = urlsafe_base64_decode(videoUser['id'])
-        # Convert the decoded bytes back to the original integer (assuming the ID was an integer)
-        decode_user_id = int(force_str(decode_user_id_bytes))
-        print(decode_user_id)
-        user_id = User.objects.get(id=decode_user_id)
-        video = VideoModel.objects.filter(user=user_id)
+    def get(self, request, id):
+        video = VideoModel.objects.filter(user=id)
         serializer  = serializers.GetVideoSerializer(video, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class VideoApiView( APIView ):
 
@@ -175,7 +254,6 @@ class VideoApiView( APIView ):
             video.delete()
             return Response({'message': 'Video delete successfully'}, status=status.HTTP_200_OK)
 
-
 class RetriveVideoApiView( APIView ):
 
     authentication_classes = [JWTAuthentication]
@@ -190,8 +268,6 @@ class RetriveVideoApiView( APIView ):
         else:
             return Response({"message": "you haven't post any question yet"}, status=status.HTTP_200_OK)
     
-
-
 class SearchApiView( APIView ):
 
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -210,7 +286,6 @@ class SearchApiView( APIView ):
         else:
             return Response({"message": f"No search Result found {q}"})
 
-
 class AnswerApiView( APIView ):
 
     permission_classes = [IsAuthenticated]
@@ -220,6 +295,7 @@ class AnswerApiView( APIView ):
         try:
             video =  request.query_params.get('q')
             answer = AnswerModel.objects.filter(video=video)
+            
             serializer = serializers.getAnswerSerializer(answer, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
@@ -244,8 +320,9 @@ class AnswerApiView( APIView ):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
     def delete(self, request, id):
-        video = AnswerModel.objects.filter(id=id)
+        video = AnswerModel.objects.get(id=id)
         if video is not None:
             video.delete()
             return Response({'message': 'Video delete successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Answer does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 

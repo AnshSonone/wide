@@ -14,6 +14,8 @@ from pathlib import Path
 import cloudinary_storage
 import os
 from datetime import timedelta
+from decouple import config
+import smtplib
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -96,9 +98,9 @@ DATABASES = {
 }
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dmsj2cz1b',
-    'API_KEY': '792711545672245',
-    'API_SECRET': 'qNg3R6nafWHeJRFj-FnWin_AAXc',
+    'CLOUD_NAME': config('CLOUD_NAME'),
+    'API_KEY': config('API_KEY'),
+    'API_SECRET': config('API_SECRET'),
 }
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
@@ -161,7 +163,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://example.com",
     "https://sub.example.com",
     "http://localhost:3000",
-    'http://localhost:3000',
+    'http://localhost:5173',
     "http://127.0.0.1:9000",
 ]
 
@@ -173,11 +175,35 @@ REST_FRAMEWORK = {
     )
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 465#587
+EMAIL_HOST_ADDRESS = config('EMAIL_HOST_ADDRESS')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+
+# server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+# server.starttls()
+# server.login(EMAIL_HOST_ADDRESS, EMAIL_HOST_PASSWORD)
+# server.sendmail(EMAIL_HOST_ADDRESS, "sononeansh@gmail.com", "Test email from Python")
+# server.quit()
+
+SITE_DOMAIN = config('SITE_DOMAIN')
+SITE_NAME = config('SITE_NAME')
+
+PASSWORD_RESET_TIMEOUT=900
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication',],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated',]
+}
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=90),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
 
     "ALGORITHM": "HS256",
