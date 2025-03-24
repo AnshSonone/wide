@@ -12,9 +12,10 @@ from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from . import  serializers
 from .models import VideoModel, AnswerModel
-from .renderers import UserRenderers
+# from .renderers import UserRenderers
 from .utils import encode_url, decode_url, get_token
 from .emails import send_activation_email, send_forgot_password_email, send_notify_email
+from .pagination import PageResultPagination
 
 # Create your views here.
 
@@ -43,42 +44,44 @@ def get_tokens_for_user(user):
 
 class RegisterApiView( APIView ):
 
-    renderer_classes = [UserRenderers]
+    # renderer_classes = [UserRenderers]
     permission_classes = [AllowAny]
 
-    def post(self, request):
-        
-        serializer = serializers.UserRegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.create(serializer.validated_data)
-            activation_url = encode_url(user, route='activate')
-            send_activation_email(user.email, activation_url)
-            return Response({'message': 'User register successfully'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request): 
+        try:
+            serializer = serializers.UserRegisterSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.create(serializer.validated_data)
+                activation_url = encode_url(user, route='activate')
+                send_activation_email(user.email, activation_url)
+                return Response({'message': 'User register successfully'}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            get_object_or_404(User, id=user.id).delete()
+            return Response(e, status=status.htt400)
     
 class LoginApiView(
     APIView
 ):
     
-    authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = serializers.UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.data.get('email')
-            password = serializer.data.get('password')
-            user = authenticate(email=email, password=password)
-            if user is not None:
-                login(request, user)
-                token = get_tokens_for_user(user)
-                send_notify_email(email)
-                return Response({
-                    'token': token,
-                    'message': 'Login Successfully'
-                    }, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': {'non_filed_errors' : 'Email or Passwrod are invalid'}}, status=status.HTTP_400_BAD_REQUEST)
+        email = request.data.get('email')
+        password = request.data.get('password')
+        exist = get_object_or_404(User, email=email)
+        if not exist.is_active:
+            return Response({"message": "Account is not activated"}, status=status.HTTP_401_UNAUTHORIZED)
+        user = authenticate(request, email=email, password=password)    
+        if user is not None:
+            login(request, user) 
+            token = get_tokens_for_user(user)
+            # send_notify_email(email)
+            return Response({
+                     'token': token,
+                     'message': 'Login Successfully'
+                     }, status=status.HTTP_200_OK)
+        return Response({"message" : "Email or Passwrod are invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutApiView( APIView ):
 
@@ -193,7 +196,7 @@ class RetriveVideoByProfileView( APIView ):
         serializer  = serializers.GetVideoSerializer(video, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class VideoApiView( APIView ):
+class VideoApiView( APIView, PageResultPagination ):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -201,8 +204,12 @@ class VideoApiView( APIView ):
     def get(self, request):
         try:
             videos = VideoModel.objects.all().order_by('-created')
-            serializer = serializers.GetVideoSerializer(videos, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            paginated_queryset = self.paginate_queryset(videos, request)
+            next_page = self.get_next_link()
+            return self.get_paginated_response({
+                'result': serializers.GetVideoSerializer(paginated_queryset, many=True).data,
+                'is_last_page': next_page,
+            })
         except Exception as e:
             return Response(e)
 

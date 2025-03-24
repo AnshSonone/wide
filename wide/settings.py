@@ -177,17 +177,11 @@ REST_FRAMEWORK = {
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465#587
-EMAIL_HOST_ADDRESS = config('EMAIL_HOST_ADDRESS')
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
+EMAIL_USE_TLS = True
 
-# server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
-# server.starttls()
-# server.login(EMAIL_HOST_ADDRESS, EMAIL_HOST_PASSWORD)
-# server.sendmail(EMAIL_HOST_ADDRESS, "sononeansh@gmail.com", "Test email from Python")
-# server.quit()
 
 SITE_DOMAIN = config('SITE_DOMAIN')
 SITE_NAME = config('SITE_NAME')
