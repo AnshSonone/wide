@@ -19,7 +19,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['ansho.pythonanywhere.com']
 
 
 # Application definition
@@ -198,6 +198,16 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication',],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated',]
 }
+
+if DEBUG == 'True':
+    REST_FRAMEWORK = {
+        'DEFAULT_RENDERERS_CLASSES': ['rest_framework.renderers.BrowsableAPIRenderer',]
+    }
+else:
+    REST_FRAMEWORK = {
+        'DEFAULT_RENDERERS_CLASSES': ['rest_framework.renderers.JSONRenderer',]
+    }
+    
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
