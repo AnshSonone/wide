@@ -9,33 +9,73 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
 from . import  serializers
 from .models import VideoModel, AnswerModel
 # from .renderers import UserRenderers
 from .utils import encode_url, decode_url, get_token
 from .emails import send_activation_email, send_forgot_password_email, send_notify_email
 from .pagination import PageResultPagination
-from git import Repo
+from decouple import config
+import requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
 
 # Create your views here.
 
 User = get_user_model()
 
 # =====================
-#   Continous deployement
+#   EndPoints
+#=======================
+
+@api_view(["GET"])
+@permission_classes(AllowAny)
+def EndPoint(request):
+    endpoint_list = [
+    'users/register/', 
+    'users/activate/<str:uid>/<str:token>/',
+    'users/login/', 
+    'users/logout/', 
+    'users/forgot/', 
+    'users/reset/<str:uid>/<str:token>/',
+    'users/profile/', 
+    'users/profile/<int:id>/',
+    'question/<int:id>/', 
+    'token/refresh/', 
+    'videos/', 
+    'videos/<int:id>/',
+    'video/',
+    'search/'
+    'answer/', 
+    'answer/<int:id>/',
+    ]
+
+    return Response({"message": endpoint_list}, status=status.HTTP_200_OK)
+
+
+
+# =====================
+#   For CI & CD in pythonanywhere
 #=======================
 
 @csrf_exempt
-def webhook(request):
-    if request.method == 'POST':
-        repo = Repo('./wide')
-        git = repo.git
-        git.checkout('main')
-        git.pull()
-        return HttpResponse('pulled_success')
-    return HttpResponse('get_request', status=400)
+def github_webhook(request):
+    if request.method == "POST":
+        # Optional: Check if it's a push event
+        event = request.headers.get('X-GitHub-Event', '')
+        if event == "push":
+            # Call the PythonAnywhere reload API
+            username = config("PA_USERNAME")
+            token = config("PA_API_TOKEN")
+            domain = config("PA_DOMAIN")
+
+            url = f"https://www.pythonanywhere.com/api/v0/user/{username}/webapps/{domain}/reload/"
+            response = requests.post(url, auth=(username, token))
+
+            return JsonResponse({"status": "reloaded", "response": response.status_code})
+        return JsonResponse({"status": "ignored", "reason": "not a push event"})
+
 
 # =====================
 #   JWT TOKEN VIEWS
