@@ -9,17 +9,33 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from . import  serializers
 from .models import VideoModel, AnswerModel
 # from .renderers import UserRenderers
 from .utils import encode_url, decode_url, get_token
 from .emails import send_activation_email, send_forgot_password_email, send_notify_email
 from .pagination import PageResultPagination
+from git import Repo
 
 # Create your views here.
 
 User = get_user_model()
+
+# =====================
+#   Continous deployement
+#=======================
+
+@csrf_exempt
+def webhook(request):
+    if request.method == 'POST':
+        repo = Repo('./wide')
+        git = repo.git
+        git.checkout('main')
+        git.pull()
+        return HttpResponse('pulled_success')
+    return HttpResponse('get_request', status=400)
 
 # =====================
 #   JWT TOKEN VIEWS

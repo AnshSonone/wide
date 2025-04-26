@@ -17,9 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = [config('ALLOWED_HOST'), '*']
+ALLOWED_HOSTS = [config('ALLOWED_HOST'),]
 
 
 # Application definition
@@ -166,11 +166,8 @@ MEDIA_ROOT = 'static/images/'
 # MEDIA_URL = 'static/images/'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://example.com",
-    "https://sub.example.com",
-    "http://localhost:3000",
     'http://localhost:5173',
-    "http://127.0.0.1:9000",
+    'https://wide-frontend.vercel.app',
 ]
 
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend',]
@@ -199,7 +196,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated',]
 }
 
-if DEBUG == 'True':
+if DEBUG:
     REST_FRAMEWORK = {
         'DEFAULT_RENDERERS_CLASSES': ['rest_framework.renderers.BrowsableAPIRenderer',]
     }
