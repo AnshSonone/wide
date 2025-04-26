@@ -16,8 +16,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'avatar', 'bio', 'password']
 
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        user.save()
+        user =  User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+        )
+
+        user.bio = validated_data.get('bio', '')
+        user.avatar = validated_data.get('avatar', None)
         return user
     
     def update(self, instance, validated_data):

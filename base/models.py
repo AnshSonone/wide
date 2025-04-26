@@ -7,10 +7,10 @@ from .managers import CustomerManager
 class CustomUserModel(AbstractUser):
     username = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    bio = models.CharField(max_length=100, null=True)
+    bio = models.CharField(max_length=100, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    avatar = models.ImageField(upload_to='video',null=True, default='https://res.cloudinary.com/dmsj2cz1b/image/upload/v1/video/images_c8im89')
+    avatar = models.ImageField(upload_to='video',null=True, default='https://res.cloudinary.com/da25rozpm/image/upload/v1745331876/images_cpca3c.png')
     is_active = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
@@ -26,7 +26,7 @@ class CustomUserModel(AbstractUser):
 class VideoModel(models.Model):
     user = models.ForeignKey(CustomUserModel, on_delete=models.CASCADE, related_name='profile')
     videoDescription = models.TextField(max_length=10000)
-    videoUrl = models.ImageField(upload_to='video', null=True, blank=True)
+    videoUrl = models.ImageField(null=True, blank=True)
     tag = models.CharField(max_length=500)
     created = models.DateTimeField(auto_now_add=True)
     

@@ -2,7 +2,7 @@ from django.contrib.auth.models import BaseUserManager
 
 class CustomerManager(BaseUserManager):
 
-    def create_user(self, email, username, bio=None, password=None, is_active=False):
+    def create_user(self, email, username, password, bio=None, is_active=False):
         if email is None:
             raise ValueError('Email is required')
         

@@ -57,8 +57,7 @@ class RegisterApiView( APIView ):
                 return Response({'message': 'User register successfully'}, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            get_object_or_404(User, id=user.id).delete()
-            return Response(e, status=status.htt400)
+            return Response({"error" :str(e)}, status=status.HTTP_400_BAD_REQUEST, exception=True)
     
 class LoginApiView(
     APIView
@@ -73,7 +72,7 @@ class LoginApiView(
         if not exist.is_active:
             return Response({"message": "Account is not activated"}, status=status.HTTP_401_UNAUTHORIZED)
         user = authenticate(request, email=email, password=password)    
-        if user is not None:
+        if user:
             login(request, user) 
             token = get_tokens_for_user(user)
             # send_notify_email(email)
@@ -123,40 +122,29 @@ class ForgotView( APIView ):
     def post(self, request):
         email = request.data.get('email')
 
-        if not email:
-            return Response({'message': 'Email is requied'}, status=status.HTTP_400_BAD_REQUEST) 
-
         user = get_object_or_404(User, email=email)
 
-        if user is None:
-            return Response({'message': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
-
-        forgot_url = encode_url(user, 'forgot')
+        forgot_url = encode_url(user, route="forgot")
         send_forgot_password_email(email, forgot_url)
-        return Response({'message': 'forgot password email send succesfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Reset password email send succesfully'}, status=status.HTTP_200_OK)
 
 class Forgot_passwordView( APIView ):
     
     permission_classes = [AllowAny]
     
-    def patch(self, request):
-        uid = request.data.get('uid')
-        token  = request.data.get('token')
+    def patch(self, request, uid, token):
+
         password = request.data.get('password')
 
         if not uid and not token:
-            return Response({'message': 'Uid or token is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'uid or token is invalid'}, status=status.HTTP_401_BAD_REQUEST)
         
         user_id = decode_url(uid)
         user =  get_object_or_404(User, id=user_id)
 
-        if user is None:
-            return Response({'message': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
-        
-        
         if get_token(user, token):
-            user.set_password(password)
+            user.set_password(str(password))
             user.save()
             return Response({'message': 'User password update successfully'}, status=status.HTTP_200_OK)
         else:
@@ -216,7 +204,7 @@ class VideoApiView( APIView, PageResultPagination ):
     def post(self, request):
         user_id = request.data.get('user')
         videoDescription = request.data.get('videoDescription')
-        videoUrl = request.data.get('videoUrl')  
+        # videoUrl = request.data.get('videoUrl')  
         tag = request.data.get('tag')
 
         try:
@@ -229,7 +217,7 @@ class VideoApiView( APIView, PageResultPagination ):
         video = VideoModel.objects.create(
             user = user,
             videoDescription = videoDescription,
-            videoUrl = videoUrl,
+            # videoUrl = videoUrl,
             tag = tag,
         )
 
@@ -243,14 +231,14 @@ class VideoApiView( APIView, PageResultPagination ):
     def put(self, request):
         id = request.data['id']
         videoDescription = request.data['videoDescription']
-        videoUrl = request.data['videoUrl']
+        # videoUrl = request.data['videoUrl']
         tag = request.data['tag']
 
         video = VideoModel.objects.filter(id=id)
         video.update(
             isinstance=True,
             videoDescription= videoDescription,
-            videoUrl=videoUrl,
+            # videoUrl=videoUrl,
             tag=tag
         )
         return Response({'message': 'Video upoalded successfully'}, status=status.HTTP_201_CREATED)
