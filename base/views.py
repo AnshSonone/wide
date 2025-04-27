@@ -30,7 +30,7 @@ User = get_user_model()
 #=======================
 
 @api_view(["GET"])
-@permission_classes(AllowAny)
+@permission_classes([AllowAny])
 def EndPoint(request):
     endpoint_list = [
     'users/register/', 
@@ -151,12 +151,9 @@ class Activation_ConfrimView( APIView ):
     
     permission_classes = [ AllowAny ]
     
-    def patch(self, request):
-        uid = request.data.get('uid')
-        token = request.data.get('token')
-
+    def patch(self, request, uid, token):
         if not uid and not token:
-            return Response({'messgae': 'Uid or token is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Uid or token is invalid'}, status=status.HTTP_400_BAD_REQUEST)
 
         user_id = decode_url(uid)
         user = get_object_or_404(User, id=user_id)
@@ -169,7 +166,7 @@ class Activation_ConfrimView( APIView ):
             user.save()
             return Response({'message': 'User account activated successfully'}, status=status.HTTP_201_CREATED)
         else:
-            return Response({'message': 'User or token is not exist'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Uid or token is expired'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ForgotView( APIView ):
     

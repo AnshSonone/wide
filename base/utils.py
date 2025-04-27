@@ -12,6 +12,8 @@ def encode_url(user, route):
     return url
 
 def decode_url(uid):
+    if uid is None:
+        return None
     user_id = force_str(urlsafe_base64_decode(uid))
     return user_id
 
