@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from .models import VideoModel, AnswerModel
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
@@ -31,6 +30,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         instance.email = validated_data.get('email', instance.email)
         instance.bio = validated_data.get('bio', instance.bio)
         instance.password = validated_data.get('username', instance.password)
+        instance.avatar = validated_data.get('avatar', instance.avatar)
         instance.save()
 
         return instance

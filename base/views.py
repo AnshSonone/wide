@@ -20,6 +20,8 @@ import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
+from cloudinary.uploader import upload
+from cloudinary.utils import cloudinary_url
 
 # Create your views here.
 
@@ -107,7 +109,13 @@ class RegisterApiView( APIView ):
         try:
             serializer = serializers.UserRegisterSerializer(data=request.data)
             if serializer.is_valid():
-                user = serializer.create(serializer.validated_data)
+                user = serializer.save()
+                if request.FILES['avatar']:
+                    avatar_image = request.FILES['avatar']
+                    cloud_image = upload(avatar_image)
+                    avatar_url = cloud_image.get('public_id')
+                    user.avatar = avatar_url
+                    user.save()
                 activation_url = encode_url(user, route='activate')
                 send_activation_email(user.email, activation_url)
                 return Response({'message': 'User register successfully'}, status=status.HTTP_201_CREATED)

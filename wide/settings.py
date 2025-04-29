@@ -1,9 +1,7 @@
 from pathlib import Path
-import cloudinary_storage
-import os
+import cloudinary
 from datetime import timedelta
 from decouple import config
-import smtplib
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -17,9 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = [config('ALLOWED_HOST'), '*']
+ALLOWED_HOSTS = [config('ALLOWED_HOST'),]
 
 
 # Application definition
@@ -102,6 +100,12 @@ else:
         }
     }
  
+cloudinary.config( 
+    cloud_name = config('CLOUD_NAME'), 
+    api_key = config('API_KEY'), 
+    api_secret = config('API_SECRET')
+)
+
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': config('CLOUD_NAME'),
@@ -110,6 +114,9 @@ CLOUDINARY_STORAGE = {
 }
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_URL = f"cloudinary://{CLOUDINARY_STORAGE['API_KEY']}:{CLOUDINARY_STORAGE['API_SECRET']}@{CLOUDINARY_STORAGE['CLOUD_NAME']}"
+
 
 
 # Password validation
@@ -142,28 +149,12 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
-STATIC_URL = 'static/'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATIC_URL = 'static/'
-
-STATIC_DIRS = [
-    BASE_DIR / 'static'
-]
-
-UPLOAD_URL = 'static/images/'
-
-MEDIA_ROOT = 'static/images/'
-
-# MEDIA_URL = 'static/images/'
+STATIC_URL = '/static/'
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',

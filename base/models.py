@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from .managers import CustomerManager
+from cloudinary.models import CloudinaryField
 
 # Create your models here.
 
@@ -10,7 +11,7 @@ class CustomUserModel(AbstractUser):
     bio = models.CharField(max_length=100, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    avatar = models.ImageField(upload_to='video',null=True, default='https://res.cloudinary.com/da25rozpm/image/upload/v1745331876/images_cpca3c.png')
+    avatar = CloudinaryField('image', folder='wide', default='images_rujcgg', blank=True, null=True)
     is_active = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"

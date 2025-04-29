@@ -10,4 +10,4 @@ urlpatterns = [
     path('github-webhook/', views.github_webhook),
 ]
 
-urlpatterns += static(settings.STATIC_URL, document_root=settings.MEDIA_ROOT)
+# urlpatterns += static(settings.STATIC_URL, document_root=settings.MEDIA_ROOT)
